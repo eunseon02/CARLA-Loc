@@ -5,7 +5,8 @@
 - Offical Paper: https://arxiv.org/abs/2309.08909v2
 - Official Repository : https://github.com/yuhang1008/CARLA-Loc
 ---
-
+- Add LIVO_bag.py
+- Add ring, time in lidar data
 ---
 
 ```bibtex

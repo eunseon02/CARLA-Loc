@@ -59,7 +59,9 @@ def creat_pc2_msg( points, header, point_step = None):
                 PointField(name='intensity', offset=12,
                         datatype=PointField.FLOAT32, count=1),
                 PointField(name='ring', offset=16,
-                        datatype=PointField.FLOAT32, count=1),
+                        datatype=PointField.UINT16, count=1),
+                PointField(name='pad', offset=18, 
+                        datatype=PointField.UINT16,  count=1),
                 PointField(name='time', offset=20,
                         datatype=PointField.FLOAT32, count=1)]
     # Check if input is numpy array
@@ -172,7 +174,7 @@ def main():
     map_names = ['Town01', 'Town02', 'Town03', 'Town04', 'Town05', 'Town06', 'Town07', 'Town10HD']
     # [dynamic_type, if_use_segmentation]
     presets = [['dynamic', False], ['static', False]]
-    weathers = ['FoggyNoon', 'RainyNight']
+    weathers = ['RainyNight'] # 'FoggyNoon'
     dyna_types = ['dynamic', 'static']
 
     for map_name in map_names:
@@ -233,10 +235,8 @@ def main():
                     N = len(lidar_pkl)
                     pts_per_rot = int(pts_per_sec / rotation_freq)       # ≈66500
                     time_per_pt = 1.0/pts_per_sec                       # ≈7.52e-7 s
-                    ring_arr = (np.arange(N, dtype=np.float32) % channels).reshape(N,1)
+                    ring_arr = (np.arange(N, dtype=np.uint16) % channels).reshape(N,1)
                     time_arr = (np.arange(N, dtype=np.float32) * time_per_pt).reshape(N,1)
-
-
 
                     lidar_all = []
                     for i, pt in enumerate(lidar_list):
@@ -248,9 +248,8 @@ def main():
 
                         ring  = int(ring_arr[i])
                         t_off = float(time_arr[i])
-                        lidar_all.append((x, y, z, intensity, ring, t_off))
+                        lidar_all.append((x, y, z, intensity, ring, 0, t_off))
                     #----------------------------------------
-
                     secs, nano_secs = split_float_to_secs_nsecs(common_data['lidar']['timestamp'][index])
                     timestamp = rospy.Time(secs=secs, nsecs=nano_secs)
                     header = std_msgs.Header()
