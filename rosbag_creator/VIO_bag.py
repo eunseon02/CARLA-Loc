@@ -36,7 +36,56 @@ def split_float_to_secs_nsecs(float_number):
     decimal_as_nsecs_str = format(int(decimal_as_nsecs), '09')
     # Return the parts as integers
     return int(integer_part), int(decimal_as_nsecs_str)
-    
+
+
+def make_camera_info(bp, stamp):
+    """
+    bp: CARLA blueprint for sensor.camera.rgb
+    stamp: rospy.Time
+    returns: sensor_msgs/CameraInfo
+    """
+    W = bp.get_attribute('image_size_x').as_int()
+    H = bp.get_attribute('image_size_y').as_int()
+    fov = bp.get_attribute('fov').as_float()
+
+    # 픽셀 단위 focal
+    fx = W / (2 * np.tan(fov * np.pi / 360))
+    fy = H / (2 * np.tan(fov * np.pi / 360))
+    cx = W / 2
+    cy = H / 2
+
+    # 왜곡 계수 (CARLA 기본 블루프린트)
+    k1 = bp.get_attribute('lens_k').as_float()
+    k2 = bp.get_attribute('lens_kcube').as_float()
+    # tangential distortion, higher orders 없으면 0
+    p1 = 0.0
+    p2 = 0.0
+    k3 = 0.0
+
+    cam_info = CameraInfo()
+    cam_info.header.stamp = stamp
+    cam_info.header.frame_id = 'cam_left'  # 또는 cam_right
+    cam_info.height = H
+    cam_info.width = W
+
+    # K 행렬
+    cam_info.K = [fx, 0.0, cx,
+                  0.0, fy, cy,
+                  0.0, 0.0, 1.0]
+    # D 왜곡 계수: [k1, k2, k3, k4, …]
+    cam_info.D = [k1, k2, p1, p2, k3]
+    cam_info.distortion_model = 'plumb_bob'
+
+    # R, P 행렬은 기본 정렬(identity, projection)
+    cam_info.R = [1.0, 0.0, 0.0,
+                  0.0, 1.0, 0.0,
+                  0.0, 0.0, 1.0]
+    cam_info.P = [fx, 0.0, cx, 0.0,
+                  0.0, fy, cy, 0.0,
+                  0.0, 0.0, 1.0, 0.0]
+    return cam_info
+
+
 def main():
 
     argparser = argparse.ArgumentParser(description= 'for genarating raw data')
@@ -121,6 +170,9 @@ def main():
                         image_message.header.frame_id = 'cam_right'
                         image_message.header.seq = i
                         bag.write('/cam1_raw', image_message, timestamp)
+                        cam_info = make_camera_info(cam_bp, stamp)
+                        bag.write('/cam0_info', cam_info, stamp)
+
                         sys.stdout.write('\r'+str(i)+' of '+str(len(img_paths)))
                         sys.stdout.flush()
                         
